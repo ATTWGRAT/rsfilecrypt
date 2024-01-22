@@ -1,11 +1,8 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use crate::encryption::{Arguments, CryptType, KDFType};
 
-pub struct Arguments {
-    crypt_type: String,
-    file: File,
-}
 pub fn parse(args: Vec<String>) -> Arguments
 {
     if args.len() == 1
@@ -19,11 +16,15 @@ pub fn parse(args: Vec<String>) -> Arguments
 
     let file = match File::open(path) {
         Ok(f) => f,
-        Err(err) => panic!("Couldn't open {} : {err}", path.display()),
+        Err(err) => panic!("Couldn't open {} : {}", path.display(), err),
     };
 
 
-    return Arguments { crypt_type: args[0].clone(), file};
+    return Arguments {
+        crypt_type: CryptType::AESGCM,
+        kdf_type: KDFType::Argon2,
+        file
+    };
 
 }
 

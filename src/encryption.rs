@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::time::{SystemTime, UNIX_EPOCH};
 use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
 use aes_gcm::aead::Aead;
@@ -6,12 +5,12 @@ use argon2::{password_hash::{
     rand_core::OsRng,
 }, Argon2, Algorithm, Version, Params};
 use rand_core::RngCore;
-use crate::verification::Encrypted;
+use crate::inout::Arguments;
+use crate::encoding::Encrypted;
 
-pub struct Arguments {
-    pub file: File,
-}
 
+///Function takes a salt, password and Arguments structure (for use later) and
+///creates a safe key using the Argon2 hashing algo for later encryption.
 pub fn key_generation(salt: String, _args: &mut Arguments, password: String) -> [u8; 32]
 {
     let argon2 = Argon2::new(Algorithm::Argon2id,
@@ -26,6 +25,12 @@ pub fn key_generation(salt: String, _args: &mut Arguments, password: String) -> 
     return output_key_material;
 }
 
+/// Generates a random 12 byte nonce.
+/// For nonce safety 4 bytes is always dependent
+/// on the current time, and the other 8 are random.
+/// That way, a single user will never have the same nonce
+/// more than once (since they would have to generate it a huge amount of times
+/// in a period of 1 second).
 pub fn gen_nonce() -> [u8; 12]
 {
     let mut time_part = SystemTime::now()
@@ -40,7 +45,8 @@ pub fn gen_nonce() -> [u8; 12]
     return ret;
 }
 
-pub fn encrypt(file_string: &String, key: &[u8; 32]) -> Encrypted
+///Encrypts a data buffer (Vec<u8>) with the AES256-GCM algo using a 32 byte key.
+pub fn encrypt(file_string: &Vec<u8>, key: &[u8; 32]) -> Encrypted
 {
     let key: &Key<Aes256Gcm> = key.into();
 
@@ -50,14 +56,15 @@ pub fn encrypt(file_string: &String, key: &[u8; 32]) -> Encrypted
 
     let nonce_cloned = Nonce::clone_from_slice(nonce.as_slice());
 
-    let ciphertext = cipher.encrypt(&nonce_cloned, file_string.clone().into_bytes().as_ref()).expect("Failed while encrypting");
+    let ciphertext = cipher.encrypt(&nonce_cloned, file_string.as_ref()).expect("Failed while encrypting");
 
     let encrypted = Encrypted{ciphertext, nonce, mac: None};
 
     return encrypted;
 }
 
-pub unsafe fn decrypt(data: &Encrypted, key: &[u8; 32]) -> String
+///Decrypts encrypted data using a 32 byte key
+pub unsafe fn decrypt(data: &Encrypted, key: &[u8; 32]) -> Vec<u8>
 {
     let key: &Key<Aes256Gcm> = key.into();
 
@@ -65,9 +72,7 @@ pub unsafe fn decrypt(data: &Encrypted, key: &[u8; 32]) -> String
 
     let nonce = Nonce::clone_from_slice(data.nonce.as_slice());
 
-    let value = cipher.decrypt(&nonce, data.ciphertext.as_slice()).expect("Failed while decrypting");
+    let value = cipher.decrypt(&nonce, data.ciphertext.as_slice()).expect("Failed during decryption");
 
-    let string = String::from_utf8(value).expect("Failed while changing to string");
-
-    return string;
+    return value;
 }

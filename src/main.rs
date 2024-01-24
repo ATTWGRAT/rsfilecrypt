@@ -1,8 +1,9 @@
 mod inout;
 mod encryption;
+mod verification;
 
 use std::env;
-use crate::encryption::{Arguments, decrypt, encrypt, gen_nonce, key_generation};
+use crate::encryption::{Arguments, decrypt, encrypt, key_generation};
 use crate::inout::{parse, read_file_to_string};
 
 fn main() {
@@ -10,19 +11,19 @@ fn main() {
 
     let mut a: Arguments = parse(args);
 
-    //let full_key = key_generation(&mut a, String::from("asdasd123"));
+    let val = read_file_to_string(&mut a);
 
-    //let enc_key: [u8; 32] = full_key[..32].try_into().unwrap();
+    let enc_key: [u8; 32] = key_generation(String::from("asdasd123"), &mut a, "password".to_string());
 
-    //let mac_key: [u8; 32] = full_key[32..].try_into().unwrap();
+    let mac_key: [u8; 32] = key_generation(String::from("dsadsa321"), &mut a, "password".to_string());
 
-    //let val = read_file_to_string(&mut a);
+    let mut enc = encrypt(&val, &enc_key);
 
-    //let enc = encrypt(&val, &enc_key);
+    enc.generate_mac(&mac_key);
 
-    //let tag = generate_mac(&enc, &mac_key);
+    enc.verify_mac(&mac_key);
 
-    //let dec = unsafe {decrypt(enc, &enc_key)};
+    let dec = unsafe {decrypt(&enc, &enc_key)};
 
-    //println!("Succesfully decrypted: \n{}", dec);
+    println!("Succesfully decrypted: \n{}", dec);
 }

@@ -1,51 +1,25 @@
 use std::fs::File;
 use std::time::{SystemTime, UNIX_EPOCH};
-use aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, Nonce};
+use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
 use aes_gcm::aead::Aead;
 use argon2::{password_hash::{
     rand_core::OsRng,
-    PasswordHasher,
 }, Argon2, Algorithm, Version, Params};
 use rand_core::RngCore;
-use ring::{hmac};
-use ring::hmac::{HMAC_SHA256, sign};
-
-pub struct Encrypted{
-    pub ciphertext: Vec<u8>,
-    pub nonce: [u8; 12],
-    pub mac: Option<Vec<u8>>,
-}
-
-impl Encrypted{
-    pub fn generate_mac(&mut self, key: &[u8; 12])
-    {
-
-        let key2 = hmac::Key::new(HMAC_SHA256,  key);
-
-        let mut data = self.ciphertext.clone();
-
-        let mut local_nonce = self.nonce.to_vec();
-
-        data.append(&mut local_nonce);
-
-        let mac = sign(&key2, data.as_slice());
-
-        self.mac = Some(mac.as_ref().to_vec());
-    }
-}
+use crate::verification::Encrypted;
 
 pub struct Arguments {
     pub file: File,
 }
 
-pub fn key_generation(salt: String, args: &mut Arguments, password: String) -> [u8; 64]
+pub fn key_generation(salt: String, _args: &mut Arguments, password: String) -> [u8; 32]
 {
-    let mut argon2 = Argon2::new(Algorithm::Argon2id,
+    let argon2 = Argon2::new(Algorithm::Argon2id,
                                  Version::V0x10,
                                  Params::new(47104, 3, 2, Some(32))
                                      .expect("Error while creating hashing parameters"));
 
-    let mut output_key_material = [0u8; 64];
+    let mut output_key_material = [0u8; 32];
 
     argon2.hash_password_into(password.as_bytes(), salt.as_bytes(), &mut output_key_material).expect("Failed while hashing the password");
 
@@ -83,7 +57,7 @@ pub fn encrypt(file_string: &String, key: &[u8; 32]) -> Encrypted
     return encrypted;
 }
 
-pub unsafe fn decrypt(data: Encrypted, key: &[u8; 32]) -> String
+pub unsafe fn decrypt(data: &Encrypted, key: &[u8; 32]) -> String
 {
     let key: &Key<Aes256Gcm> = key.into();
 

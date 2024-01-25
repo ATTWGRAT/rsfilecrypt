@@ -34,7 +34,11 @@ impl Arguments {
 ///Writes a buffer of Vec<u8> to a file with the given path string
 pub fn write_buffer_to_file(buffer: &Vec<u8>, path: &String)
 {
-   fs::write(Path::new(path.as_str()), buffer).expect("Failed while writing to file");
+   match fs::write(Path::new(path.as_str()), buffer)
+   {
+       Ok(_) => println!("Successfully written {} bytes to {}", buffer.len(), path),
+       Err(_) => println!("Failed while writing to {}", path)
+   }
 }
 
 /// Takes data in the Encrypted struct, adds them together:

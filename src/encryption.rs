@@ -2,8 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
 use aes_gcm::aead::Aead;
 use argon2::{password_hash::{
-    rand_core::OsRng,
-}, Argon2, Algorithm, Version, Params};
+    rand_core::OsRng}, Argon2, Algorithm, Version, Params};
 use rand_core::RngCore;
 use crate::inout::Arguments;
 use crate::encoding::Encrypted;
@@ -46,7 +45,7 @@ pub fn gen_nonce() -> [u8; 12]
 }
 
 ///Encrypts a data buffer (Vec<u8>) with the AES256-GCM algo using a 32 byte key.
-pub fn encrypt(file_string: &Vec<u8>, key: &[u8; 32]) -> Encrypted
+pub fn encrypt(data: &Vec<u8>, key: &[u8; 32]) -> Encrypted
 {
     let key: &Key<Aes256Gcm> = key.into();
 
@@ -56,7 +55,7 @@ pub fn encrypt(file_string: &Vec<u8>, key: &[u8; 32]) -> Encrypted
 
     let nonce_cloned = Nonce::clone_from_slice(nonce.as_slice());
 
-    let ciphertext = cipher.encrypt(&nonce_cloned, file_string.as_ref()).expect("Failed while encrypting");
+    let ciphertext = cipher.encrypt(&nonce_cloned, data.as_ref()).expect("Failed while encrypting");
 
     let encrypted = Encrypted{ciphertext, nonce, mac: None};
 
@@ -64,7 +63,7 @@ pub fn encrypt(file_string: &Vec<u8>, key: &[u8; 32]) -> Encrypted
 }
 
 ///Decrypts encrypted data using a 32 byte key
-pub unsafe fn decrypt(data: &Encrypted, key: &[u8; 32]) -> Vec<u8>
+pub fn decrypt(data: &Encrypted, key: &[u8; 32]) -> Vec<u8>
 {
     let key: &Key<Aes256Gcm> = key.into();
 
@@ -75,4 +74,60 @@ pub unsafe fn decrypt(data: &Encrypted, key: &[u8; 32]) -> Vec<u8>
     let value = cipher.decrypt(&nonce, data.ciphertext.as_slice()).expect("Failed during decryption");
 
     return value;
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use crate::encryption::{decrypt, encrypt, gen_nonce, key_generation};
+    use crate::inout::Arguments;
+
+    #[test]
+    fn nonce_gen()
+    {
+        let nonce1 = gen_nonce();
+        let nonce2 = gen_nonce();
+        let nonce3 = gen_nonce();
+
+        assert_ne!(nonce1, nonce2);
+        assert_ne!(nonce2, nonce3);
+        assert_ne!(nonce1, nonce3);
+    }
+
+    #[test]
+    fn encrypt_decrypt()
+    {
+        let key = [42u8; 32];
+
+        let data = b"hackermantest".to_vec();
+
+        let enc = encrypt(&data, &key);
+
+        let dec = decrypt(&enc, &key);
+
+        assert_eq!(data, dec);
+    }
+
+    #[test]
+    fn keygen_simple()
+    {
+        assert_eq!(key_generation("abc321123".to_string(), &mut Arguments {file: "asd".parse().unwrap() }, "dfghijkl123@".to_string()),
+                   key_generation("abc321123".to_string(), &mut Arguments {file: "asd".parse().unwrap() }, "dfghijkl123@".to_string()));
+    }
+
+    #[test]
+    fn keygen_exact()
+    {
+        let testarr: [u8; 32] = [
+            13, 90, 29, 25, 116, 58, 12, 43,
+            66, 82, 52, 129, 246, 29, 178, 135,
+            52, 195, 91, 62, 106, 97, 8, 20,
+            223, 162, 175, 74, 176, 200, 202, 248,
+        ];
+
+        assert_eq!(key_generation("abc321123".to_string(), &mut Arguments {file: "asd".parse().unwrap() }, "dfghijkl123@".to_string()),
+                   testarr);
+    }
+
 }

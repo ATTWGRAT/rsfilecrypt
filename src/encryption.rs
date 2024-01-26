@@ -10,7 +10,7 @@ use crate::encoding::Encrypted;
 
 ///Function takes a salt, password and Arguments structure (for use later) and
 ///creates a safe key using the Argon2 hashing algo for later encryption.
-pub fn key_generation(salt: String, _args: &mut Arguments, password: String) -> [u8; 32]
+pub fn key_generation(salt: String, _args: &mut Arguments, password: &String) -> [u8; 32]
 {
     let argon2 = Argon2::new(Algorithm::Argon2id,
                                  Version::V0x10,
@@ -45,7 +45,7 @@ pub fn gen_nonce() -> [u8; 12]
 }
 
 ///Encrypts a data buffer (Vec<u8>) with the AES256-GCM algo using a 32 byte key.
-pub fn encrypt(data: &Vec<u8>, key: &[u8; 32]) -> Encrypted
+pub fn encrypt(data: Vec<u8>, key: &[u8; 32]) -> Encrypted
 {
     let key: &Key<Aes256Gcm> = key.into();
 
@@ -81,7 +81,7 @@ pub fn decrypt(data: &Encrypted, key: &[u8; 32]) -> Vec<u8>
 #[cfg(test)]
 mod tests {
     use crate::encryption::{decrypt, encrypt, gen_nonce, key_generation};
-    use crate::inout::Arguments;
+    use crate::inout::{Action, Arguments};
 
     #[test]
     fn nonce_gen()
@@ -102,7 +102,7 @@ mod tests {
 
         let data = b"hackermantest".to_vec();
 
-        let enc = encrypt(&data, &key);
+        let enc = encrypt(data, &key);
 
         let dec = decrypt(&enc, &key);
 
@@ -112,8 +112,8 @@ mod tests {
     #[test]
     fn keygen_simple()
     {
-        assert_eq!(key_generation("abc321123".to_string(), &mut Arguments {file: "asd".parse().unwrap() }, "dfghijkl123@".to_string()),
-                   key_generation("abc321123".to_string(), &mut Arguments {file: "asd".parse().unwrap() }, "dfghijkl123@".to_string()));
+        assert_eq!(key_generation("abc321123".to_string(), &mut Arguments { action: Action::Encrypt, file: "asd".parse().unwrap() }, &"dfghijkl123@".to_string()),
+                   key_generation("abc321123".to_string(), &mut Arguments { action: Action::Encrypt, file: "asd".parse().unwrap() }, &"dfghijkl123@".to_string()));
     }
 
     #[test]
@@ -126,7 +126,7 @@ mod tests {
             223, 162, 175, 74, 176, 200, 202, 248,
         ];
 
-        assert_eq!(key_generation("abc321123".to_string(), &mut Arguments {file: "asd".parse().unwrap() }, "dfghijkl123@".to_string()),
+        assert_eq!(key_generation("abc321123".to_string(), &mut Arguments { action: Action::Encrypt, file: "asd".parse().unwrap() }, &"dfghijkl123@".to_string()),
                    testarr);
     }
 

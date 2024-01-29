@@ -11,9 +11,15 @@ pub fn encode_encrypted_data(enc: &Encrypted) -> Vec<u8> {
         .clone()
         .expect("Please generate a mac before encoding!");
 
+    let mut salt1 = enc.salt1.to_vec();
+    let mut salt2 = enc.salt2.to_vec();
+
     data.append(enc.ciphertext.clone().as_mut());
 
     data.append(enc.nonce.clone().to_vec().as_mut());
+
+    data.append(&mut salt1);
+    data.append(&mut salt2);
 
     return data;
 }
@@ -26,10 +32,14 @@ pub unsafe fn decode_encrypted_data(data: Vec<u8>) -> Encrypted {
     let length = data.len();
 
     let mac = Some(data[..32].to_vec());
-    let nonce: [u8; 12] = data[length - 12..].try_into().unwrap();
-    let ciphertext = data[32..length - 12].to_vec();
+    let salt2: [u8; 16] = data[length - 16..].try_into().unwrap();
+    let salt1: [u8; 16] = data[length - 32..length - 16].try_into().unwrap();
+    let nonce: [u8; 12] = data[length - 44..length - 32].try_into().unwrap();
+    let ciphertext = data[32..length - 44].to_vec();
 
     let enc = Encrypted {
+        salt1,
+        salt2,
         mac,
         nonce,
         ciphertext,

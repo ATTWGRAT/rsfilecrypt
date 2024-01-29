@@ -9,7 +9,12 @@ pub fn generate_mac(enc: &mut Encrypted, key: &[u8; 32]) {
 
     let mut local_nonce = enc.nonce.to_vec();
 
+    let mut salt1 = enc.salt1.to_vec();
+    let mut salt2 = enc.salt2.to_vec();
+
     data.append(&mut local_nonce);
+    data.append(&mut salt1);
+    data.append(&mut salt2);
 
     let mac = sign(&key2, data.as_slice());
 
@@ -27,7 +32,12 @@ pub unsafe fn verify_mac(enc: &Encrypted, key: &[u8; 32]) -> bool {
 
     let mut local_nonce = enc.nonce.to_vec();
 
+    let mut salt1 = enc.salt1.to_vec();
+    let mut salt2 = enc.salt2.to_vec();
+
     data.append(&mut local_nonce);
+    data.append(&mut salt1);
+    data.append(&mut salt2);
 
     return match verify(&key2, data.as_slice(), enc.mac.as_ref().unwrap().as_slice()) {
         Ok(_) => {
